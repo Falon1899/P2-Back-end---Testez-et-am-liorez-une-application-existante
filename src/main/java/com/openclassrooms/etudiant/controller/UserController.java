@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
+
 public class UserController {
 
     private final UserService userService;
@@ -28,7 +29,10 @@ public class UserController {
     }
 
     @PostMapping("/api/login")
-    public ResponseEntity<?> login(LoginRequestDTO loginRequestDTO) {
+
+    // Il manquait @RequestBody pour que ça fonctionne correctement 
+
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) {
         String jwtToken = userService.login(loginRequestDTO.getLogin(), loginRequestDTO.getPassword());
         return ResponseEntity.ok(jwtToken);
     }
