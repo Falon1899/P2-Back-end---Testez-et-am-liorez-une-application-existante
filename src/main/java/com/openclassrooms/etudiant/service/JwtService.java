@@ -42,4 +42,17 @@ public class JwtService {
         return Jwts.builder().subject(userDetails.getUsername()).expiration(expiration).signWith(key).compact();
     }
 
+    public String extractUsername(String token) {
+
+    byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+    SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+
+    return Jwts.parser()
+            .verifyWith(key)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload()
+            .getSubject();
+}
+
 }

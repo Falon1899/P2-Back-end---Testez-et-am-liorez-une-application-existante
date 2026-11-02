@@ -1,5 +1,6 @@
 package com.openclassrooms.etudiant.service;
 
+import com.openclassrooms.etudiant.dto.UserResponseDTO;
 import com.openclassrooms.etudiant.entities.User;
 import com.openclassrooms.etudiant.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -9,8 +10,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.security.authentication.BadCredentialsException;
 
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -43,9 +47,34 @@ public class UserService {
                     
             return jwtService.generateToken(userDetails);
         } else {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new BadCredentialsException("Invalid credentials");
         }
     }
+/**
+ * Récupère l'ensemble des utilisateurs enregistrés
+ * dans la base de données via UserRepository. 
+* @return la liste des utilisateurs sous forme de DTO
+ */
+public List<UserResponseDTO> getAllUsers() {
+
+    List<User> users = userRepository.findAll();
+
+    List<UserResponseDTO> dtoList = new ArrayList<>();
+
+    for (User user : users) {
+        UserResponseDTO dto = new UserResponseDTO(
+            user.getId(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getLogin()
+        );
+
+        dtoList.add(dto);
+    }
+
+    return dtoList;
 
 
+
+}
 }
