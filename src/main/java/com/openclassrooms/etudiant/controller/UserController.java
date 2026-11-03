@@ -44,7 +44,13 @@ public class UserController {
     @GetMapping("/api/users")
         public List<UserResponseDTO> getAllUsers() {
         return userService.getAllUsers();
-}
+    }
+
+    @PostMapping("/api/students")
+        public ResponseEntity<?> createStudent(@Valid @RequestBody RegisterDTO registerDTO) {
+            userService.register(userDtoMapper.toEntity(registerDTO));
+            return new ResponseEntity<>(HttpStatus.CREATED);
+        }
 
 
 }
