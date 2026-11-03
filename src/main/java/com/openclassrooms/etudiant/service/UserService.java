@@ -10,11 +10,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
+
 
 @Slf4j
 @Service
@@ -55,26 +58,41 @@ public class UserService {
  * dans la base de données via UserRepository. 
 * @return la liste des utilisateurs sous forme de DTO
  */
-public List<UserResponseDTO> getAllUsers() {
+    public List<UserResponseDTO> getAllUsers() {
 
-    List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAll();
 
-    List<UserResponseDTO> dtoList = new ArrayList<>();
+        List<UserResponseDTO> dtoList = new ArrayList<>();
 
-    for (User user : users) {
-        UserResponseDTO dto = new UserResponseDTO(
+        for (User user : users) {
+            UserResponseDTO dto = new UserResponseDTO(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getLogin()
+            );
+
+            dtoList.add(dto);
+        }
+
+        return dtoList;
+    }
+
+    
+    public UserResponseDTO getUserById(Long id) {
+
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Utilisateur introuvable"
+            ));
+
+        return new UserResponseDTO(
             user.getId(),
             user.getFirstName(),
             user.getLastName(),
             user.getLogin()
         );
-
-        dtoList.add(dto);
     }
 
-    return dtoList;
-
-
-
-}
 }
