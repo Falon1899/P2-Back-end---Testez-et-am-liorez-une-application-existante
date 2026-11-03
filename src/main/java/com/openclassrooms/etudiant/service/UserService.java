@@ -54,11 +54,11 @@ public class UserService {
             throw new BadCredentialsException("Invalid credentials");
         }
     }
-/**
- * Récupère l'ensemble des utilisateurs enregistrés
- * dans la base de données via UserRepository. 
-* @return la liste des utilisateurs sous forme de DTO
- */
+        /**
+         * Récupère l'ensemble des utilisateurs enregistrés
+         * dans la base de données via UserRepository. 
+        * @return la liste des utilisateurs sous forme de DTO
+        */
     public List<UserResponseDTO> getAllUsers() {
 
         List<User> users = userRepository.findAll();
@@ -126,6 +126,19 @@ public UserResponseDTO updateStudent(Long id, UpdateStudentDTO dto) {
         updatedUser.getLogin()
     );
 }
+
+
+    public void deleteStudent(Long id) {
+
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Utilisateur introuvable"
+            ));
+
+        userRepository.delete(user);
+    }
+
 
 
 }
