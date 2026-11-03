@@ -15,8 +15,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import com.openclassrooms.etudiant.configuration.security.JwtAuthenticationFilter;
 
+/**
+ * Configure l'authentification et les règles d'accès de l'API.
+ *
+ * L'application utilise des JWT et ne conserve pas
+ * de session d'authentification côté serveur.
+ */
 @Configuration
 @EnableWebSecurity
 public class SpringSecurityConfig {
@@ -48,23 +53,27 @@ public class SpringSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Configuration d'une API sans session, authentifiée par JWT.
                 .cors(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
+
                 .authorizeHttpRequests(authorize -> authorize
-                        // No auth needed on :
+                        // Endpoints publics ; toutes les autres routes exigent une authentification.
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/register", "/api/login").permitAll()
-                        // Others protected routes will be added here.
                         .anyRequest().authenticated()
                 )
-                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // Vérifie le JWT avant le filtre d'authentification standard.
+                .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(
                         (request, response, exception) -> {
                             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, exception.getMessage());
                         }));
+
         return http.build();
     }
-
 }

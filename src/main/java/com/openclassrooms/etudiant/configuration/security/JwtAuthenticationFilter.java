@@ -18,6 +18,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authentifie les requêtes HTTP à partir d'un JWT transmis
+ * dans l'en-tête Authorization.
+ *
+ * En cas de jeton valide, l'identité de l'utilisateur est
+ * enregistrée dans le contexte de sécurité Spring.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -34,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // Aucune authentification JWT à traiter
+        // Sans jeton Bearer, Spring Security gère l'accès à la ressource.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -43,14 +50,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
-            // Vérifie le JWT et récupère l'identifiant
             String username = jwtService.extractUsername(jwt);
 
-            // Charge l'utilisateur depuis la base de données
             UserDetails userDetails =
                     userDetailsService.loadUserByUsername(username);
 
-            // Crée l'objet d'authentification
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -58,13 +62,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails.getAuthorities()
                     );
 
-            // Enregistre l'authentification dans Spring Security
             SecurityContextHolder.getContext()
                     .setAuthentication(authentication);
 
         } catch (JwtException | IllegalArgumentException
                  | UsernameNotFoundException e) {
 
+            // Un jeton invalide ne doit laisser aucune authentification active.
             SecurityContextHolder.clearContext();
 
             response.sendError(
@@ -74,7 +78,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Transmet la requête au filtre suivant
         filterChain.doFilter(request, response);
     }
 }

@@ -1,7 +1,12 @@
+
 package com.openclassrooms.etudiant.dto;
 
 import lombok.Getter;
 
+/**
+ * Représente les données utilisateur exposées par l'API,
+ * sans inclure les informations sensibles comme le mot de passe.
+ */
 @Getter
 public class UserResponseDTO {
 

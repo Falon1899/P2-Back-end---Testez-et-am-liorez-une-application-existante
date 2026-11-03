@@ -1,3 +1,4 @@
+
 package com.openclassrooms.etudiant.configuration.security;
 
 import com.openclassrooms.etudiant.repository.UserRepository;
@@ -7,6 +8,10 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+/**
+ * Permet à Spring Security de charger un utilisateur
+ * depuis la base de données à partir de son login.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailService implements UserDetailsService {
@@ -18,5 +23,4 @@ public class CustomUserDetailService implements UserDetailsService {
         return userRepository.findByLogin(login)
                 .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + login));
     }
-
 }

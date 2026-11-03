@@ -1,3 +1,4 @@
+
 package com.openclassrooms.etudiant.entities;
 
 import jakarta.persistence.Column;
@@ -20,12 +21,17 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Entité utilisateur intégrant UserDetails pour permettre
+ * son utilisation par le mécanisme d'authentification Spring Security.
+ */
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @Entity
 @Table(name = "user")
 public class User implements UserDetails {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -55,7 +61,6 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updated_at;
 
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();
@@ -66,6 +71,8 @@ public class User implements UserDetails {
         return login;
     }
 
+    // Aucun contrôle d'expiration, de verrouillage ou de désactivation
+    // des comptes n'est actuellement implémenté.
     @Override
     public boolean isAccountNonExpired() {
         return true;

@@ -9,6 +9,12 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring",
         unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface UserDtoMapper {
+
+    /**
+     * Convertit les données d'inscription en entité User.
+     * Les champs gérés par la persistance ou la sécurité
+     * sont exclus du mapping.
+     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "created_at", ignore = true)
     @Mapping(target = "updated_at", ignore = true)
