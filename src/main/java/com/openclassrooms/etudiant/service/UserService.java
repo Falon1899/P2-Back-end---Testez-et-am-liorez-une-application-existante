@@ -13,6 +13,7 @@ import org.springframework.util.Assert;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
+import com.openclassrooms.etudiant.dto.UpdateStudentDTO;
 
 import java.util.Optional;
 import java.util.ArrayList;
@@ -94,5 +95,37 @@ public class UserService {
             user.getLogin()
         );
     }
+
+    
+public UserResponseDTO updateStudent(Long id, UpdateStudentDTO dto) {
+
+    User user = userRepository.findById(id)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND,
+            "Utilisateur introuvable"
+        ));
+
+    if (!user.getLogin().equals(dto.getLogin())
+            && userRepository.findByLogin(dto.getLogin()).isPresent()) {
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Ce login est déjà utilisé"
+        );
+    }
+
+    user.setFirstName(dto.getFirstName());
+    user.setLastName(dto.getLastName());
+    user.setLogin(dto.getLogin());
+
+    User updatedUser = userRepository.save(user);
+
+    return new UserResponseDTO(
+        updatedUser.getId(),
+        updatedUser.getFirstName(),
+        updatedUser.getLastName(),
+        updatedUser.getLogin()
+    );
+}
+
 
 }

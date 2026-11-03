@@ -5,6 +5,7 @@ import com.openclassrooms.etudiant.dto.RegisterDTO;
 import com.openclassrooms.etudiant.dto.UserResponseDTO;
 import com.openclassrooms.etudiant.mapper.UserDtoMapper;
 import com.openclassrooms.etudiant.service.UserService;
+import com.openclassrooms.etudiant.dto.UpdateStudentDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,10 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
+
 
 
 @RestController
@@ -57,5 +60,15 @@ public class UserController {
         public UserResponseDTO getStudentById(@PathVariable Long id) {
             return userService.getUserById(id);
         }
+
+    
+    @PutMapping("/api/students/{id}")
+        public UserResponseDTO updateStudent(
+                @PathVariable Long id,
+                @RequestBody UpdateStudentDTO dto) {
+
+            return userService.updateStudent(id, dto);
+        }
+
 
 }
