@@ -28,6 +28,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -45,13 +48,12 @@ public class UserControllerTest {
     // CONFIGURATION DE L'ENVIRONNEMENT DE TEST
     // ==========================================================
 
-    // Démarre un conteneur MySQL pour les tests d'intégration.
-    // La base utilisée est indépendante de la base de production.
+    // Utilisation de MySQL 8, version validée dans notre projet.
+    // Testcontainers démarre une base temporaire pour les tests.
     @Container
     static MySQLContainer<?> mySQLContainer =
             new MySQLContainer<>("mysql:8");
 
-    // Injection des vrais composants de l'application Spring.
     @Autowired
     private UserService userService;
 
@@ -64,13 +66,11 @@ public class UserControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    // MockMvc simule des requêtes HTTP sans démarrer
-    // un navigateur ou un serveur HTTP externe.
+    // MockMvc permet de simuler des requêtes HTTP
+    // qui traversent les contrôleurs et les filtres Spring.
     @Autowired
     private MockMvc mockMvc;
 
-    // Configure automatiquement Spring pour utiliser
-    // la base MySQL du conteneur de test.
     @DynamicPropertySource
     static void configureTestProperties(DynamicPropertyRegistry registry) {
 
@@ -87,9 +87,8 @@ public class UserControllerTest {
                 () -> "create");
     }
 
-    // Exécuté après chaque test.
-    // Supprime les utilisateurs créés afin que chaque test
-    // démarre avec une base vide.
+    // Nettoyage après chaque test pour éviter
+    // qu'un scénario influence les suivants.
     @AfterEach
     public void afterEach() {
         userRepository.deleteAll();
@@ -99,8 +98,7 @@ public class UserControllerTest {
     // MÉTHODES UTILITAIRES
     // ==========================================================
 
-    // Prépare un utilisateur fictif pour les scénarios.
-    // L'utilisateur n'est pas encore enregistré en base.
+    // Prépare un utilisateur fictif sans l'enregistrer.
     private User createTestUser() {
 
         User user = new User();
@@ -113,11 +111,8 @@ public class UserControllerTest {
         return user;
     }
 
-    // Enregistre un utilisateur dans la vraie base de test.
-    // UserService se charge notamment du hachage du mot de passe.
-    //
-    // On récupère ensuite l'utilisateur enregistré pour obtenir
-    // son identifiant généré par MySQL.
+    // Enregistre l'utilisateur avec le vrai service métier.
+    // Le mot de passe est haché par UserService.
     private User saveTestUser() {
 
         userService.register(createTestUser());
@@ -126,17 +121,13 @@ public class UserControllerTest {
                 .orElseThrow();
     }
 
-    // Génère un véritable JWT signé pour l'utilisateur.
-    //
-    // Les routes /api/users et /api/students sont protégées.
-    // Nous devons donc fournir un jeton valide pour tester
-    // leur comportement métier.
+    // Génère un JWT réel signé avec la clé de l'application.
     private String generateTestToken(User user) {
 
         return jwtService.generateToken(user);
     }
 
-    // Prépare un DTO d'inscription valide.
+    // Prépare les données nécessaires à une inscription.
     private RegisterDTO createRegisterDTO() {
 
         RegisterDTO dto = new RegisterDTO();
@@ -156,11 +147,11 @@ public class UserControllerTest {
     @Test
     public void registerUserSuccessful() throws Exception {
 
-        // GIVEN : un formulaire d'inscription valide.
+        // GIVEN : des données d'inscription valides.
         RegisterDTO registerDTO = createRegisterDTO();
 
-        // WHEN : envoi de la requête HTTP POST.
-        // THEN : l'API retourne HTTP 201.
+        // WHEN : envoi de la requête HTTP.
+        // THEN : réponse HTTP 201.
         mockMvc.perform(MockMvcRequestBuilders.post(URL)
                         .content(objectMapper.writeValueAsString(registerDTO))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -176,11 +167,11 @@ public class UserControllerTest {
     @Test
     public void registerUserWithoutRequiredData() throws Exception {
 
-        // GIVEN : un formulaire sans informations obligatoires.
+        // GIVEN : un formulaire d'inscription vide.
         RegisterDTO registerDTO = new RegisterDTO();
 
         // WHEN : tentative d'inscription.
-        // THEN : rejet avec HTTP 400.
+        // THEN : rejet HTTP 400.
         mockMvc.perform(MockMvcRequestBuilders.post(URL)
                         .content(objectMapper.writeValueAsString(registerDTO))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -196,14 +187,13 @@ public class UserControllerTest {
     @Test
     public void registerAlreadyExistUser() throws Exception {
 
-        // GIVEN : un utilisateur existe déjà dans la base.
+        // GIVEN : un utilisateur déjà enregistré.
         saveTestUser();
 
-        // Préparation d'une inscription avec le même login.
         RegisterDTO registerDTO = createRegisterDTO();
 
-        // WHEN : tentative d'inscription.
-        // THEN : rejet avec HTTP 400.
+        // WHEN : tentative d'inscription avec le même login.
+        // THEN : rejet HTTP 400.
         mockMvc.perform(MockMvcRequestBuilders.post(URL)
                         .content(objectMapper.writeValueAsString(registerDTO))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -219,20 +209,15 @@ public class UserControllerTest {
     @Test
     public void loginWithValidCredentialsReturnsJwt() throws Exception {
 
-        // GIVEN : un utilisateur enregistré.
+        // GIVEN : un utilisateur existant.
         saveTestUser();
 
-        // Préparation des identifiants corrects.
         LoginRequestDTO request = new LoginRequestDTO();
-
         request.setLogin(LOGIN);
         request.setPassword(PASSWORD);
 
-        // WHEN : connexion à /api/login.
-        // THEN : HTTP 200 et réponse au format JWT.
-        //
-        // Un JWT signé possède trois parties :
-        // HEADER.PAYLOAD.SIGNATURE
+        // WHEN : connexion avec les bons identifiants.
+        // THEN : HTTP 200 et chaîne au format JWT.
         mockMvc.perform(MockMvcRequestBuilders.post("/api/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
@@ -253,14 +238,12 @@ public class UserControllerTest {
         // GIVEN : un utilisateur enregistré.
         saveTestUser();
 
-        // Préparation d'identifiants incorrects.
         LoginRequestDTO request = new LoginRequestDTO();
-
         request.setLogin(LOGIN);
         request.setPassword("wrongPassword");
 
-        // WHEN : tentative de connexion.
-        // THEN : refus HTTP 401.
+        // WHEN : connexion avec un mot de passe incorrect.
+        // THEN : rejet HTTP 401.
         mockMvc.perform(MockMvcRequestBuilders.post("/api/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
@@ -275,17 +258,12 @@ public class UserControllerTest {
     @Test
     public void getAllUsersReturnsUserList() throws Exception {
 
-        // GIVEN : un utilisateur enregistré dans MySQL.
+        // GIVEN : un utilisateur authentifié.
         User user = saveTestUser();
-
-        // Génération d'un JWT valide pour accéder à la route.
         String token = generateTestToken(user);
 
-        // WHEN : requête GET /api/users avec authentification.
-        // THEN : HTTP 200 et présence de l'utilisateur.
-        //
-        // On vérifie également que le mot de passe
-        // n'est jamais exposé dans la réponse JSON.
+        // WHEN : GET /api/users avec un JWT valide.
+        // THEN : HTTP 200 et informations de l'utilisateur.
         mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
                         .header("Authorization", "Bearer " + token)
                         .accept(MediaType.APPLICATION_JSON))
@@ -307,18 +285,15 @@ public class UserControllerTest {
 
         // GIVEN : un utilisateur authentifié.
         User user = saveTestUser();
-
         String token = generateTestToken(user);
 
-        // Préparation des données du nouvel étudiant.
         RegisterDTO studentDTO = new RegisterDTO();
-
         studentDTO.setFirstName("Student");
         studentDTO.setLastName("Example");
         studentDTO.setLogin("student123");
         studentDTO.setPassword("studentPassword123");
 
-        // WHEN : création via POST /api/students.
+        // WHEN : création d'un nouvel étudiant.
         // THEN : HTTP 201.
         mockMvc.perform(MockMvcRequestBuilders.post("/api/students")
                         .header("Authorization", "Bearer " + token)
@@ -326,31 +301,25 @@ public class UserControllerTest {
                         .content(objectMapper.writeValueAsString(studentDTO)))
                 .andExpect(MockMvcResultMatchers.status().isCreated());
 
-        // THEN : vérification supplémentaire de la persistance.
-        //
-        // Le code HTTP 201 ne suffit pas à prouver
-        // que l'étudiant existe réellement dans MySQL.
-        org.junit.jupiter.api.Assertions.assertTrue(
+        // Vérification de la persistance dans MySQL.
+        assertTrue(
                 userRepository.findByLogin("student123").isPresent()
         );
     }
 
     // ==========================================================
-    // BI-08 : CONSULTATION D'UN ÉTUDIANT PAR SON ID
+    // BI-08 : CONSULTATION D'UN ÉTUDIANT
     // ==========================================================
 
     @Test
     public void getStudentByIdReturnsStudent() throws Exception {
 
-        // GIVEN : un étudiant enregistré en base.
+        // GIVEN : un étudiant existant.
         User user = saveTestUser();
-
         String token = generateTestToken(user);
-
-        // L'identifiant est généré automatiquement par MySQL.
         Long studentId = user.getId();
 
-        // WHEN : consultation de cet étudiant.
+        // WHEN : consultation de l'étudiant par son ID.
         // THEN : HTTP 200 et informations correspondantes.
         mockMvc.perform(MockMvcRequestBuilders.get(
                                 "/api/students/{id}", studentId)
@@ -376,19 +345,16 @@ public class UserControllerTest {
 
         // GIVEN : un étudiant existant.
         User user = saveTestUser();
-
         String token = generateTestToken(user);
         Long studentId = user.getId();
 
-        // Préparation des nouvelles informations.
         UpdateStudentDTO updateDTO = new UpdateStudentDTO();
-
         updateDTO.setFirstName("Updated");
         updateDTO.setLastName("Student");
         updateDTO.setLogin("updatedStudent123");
 
-        // WHEN : modification avec PUT /api/students/{id}.
-        // THEN : HTTP 200 et données mises à jour.
+        // WHEN : modification de l'étudiant.
+        // THEN : HTTP 200 et nouvelles données.
         mockMvc.perform(MockMvcRequestBuilders.put(
                                 "/api/students/{id}", studentId)
                         .header("Authorization", "Bearer " + token)
@@ -400,18 +366,12 @@ public class UserControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.login")
                         .value("updatedStudent123"));
 
-        // THEN : vérification directe dans la base.
-        //
-        // On s'assure que les modifications sont persistées,
-        // et pas seulement renvoyées dans la réponse HTTP.
+        // Vérification des modifications en base.
         User updatedUser = userRepository.findById(studentId)
                 .orElseThrow();
 
-        org.junit.jupiter.api.Assertions.assertEquals(
-                "Updated", updatedUser.getFirstName());
-
-        org.junit.jupiter.api.Assertions.assertEquals(
-                "updatedStudent123", updatedUser.getLogin());
+        assertEquals("Updated", updatedUser.getFirstName());
+        assertEquals("updatedStudent123", updatedUser.getLogin());
     }
 
     // ==========================================================
@@ -421,14 +381,12 @@ public class UserControllerTest {
     @Test
     public void deleteStudentRemovesStudent() throws Exception {
 
-        // GIVEN : un utilisateur authentifié et un étudiant à supprimer.
+        // GIVEN : un utilisateur authentifié.
         User authenticatedUser = saveTestUser();
-
         String token = generateTestToken(authenticatedUser);
 
-        // Création d'un second utilisateur qui sera supprimé.
+        // Création d'un étudiant distinct à supprimer.
         User student = new User();
-
         student.setFirstName("Student");
         student.setLastName("ToDelete");
         student.setLogin("studentToDelete");
@@ -436,25 +394,78 @@ public class UserControllerTest {
 
         userService.register(student);
 
-        // Récupération de l'identifiant généré par MySQL.
         Long studentId = userRepository
                 .findByLogin("studentToDelete")
                 .orElseThrow()
                 .getId();
 
-        // WHEN : suppression via DELETE /api/students/{id}.
-        // THEN : HTTP 204 No Content.
+        // WHEN : suppression de l'étudiant.
+        // THEN : HTTP 204.
         mockMvc.perform(MockMvcRequestBuilders.delete(
                                 "/api/students/{id}", studentId)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(MockMvcResultMatchers.status().isNoContent());
 
-        // THEN : vérification de la suppression en base.
+        // Vérification que l'étudiant n'existe plus en base.
+        assertFalse(userRepository.findById(studentId).isPresent());
+    }
+
+    // ==========================================================
+    // BI-11 : ACCÈS À UNE ROUTE PROTÉGÉE SANS JWT
+    // ==========================================================
+
+    @Test
+    public void getAllUsersWithoutJwtReturnsUnauthorized() throws Exception {
+
+        // GIVEN : aucune authentification.
         //
-        // findById doit retourner Optional.empty()
-        // puisque l'étudiant ne doit plus exister.
-        org.junit.jupiter.api.Assertions.assertFalse(
-                userRepository.findById(studentId).isPresent()
-        );
+        // Nous ne créons volontairement aucun utilisateur
+        // et nous ne générons aucun jeton JWT.
+        //
+        // L'objectif est de tester la sécurité de la route,
+        // pas le contenu de la base de données.
+
+        // WHEN : appel de GET /api/users sans en-tête Authorization.
+        //
+        // MockMvc fait traverser la requête aux filtres
+        // de Spring Security avant d'atteindre le contrôleur.
+
+        // THEN : Spring Security doit refuser la requête
+        // avec HTTP 401 Unauthorized.
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+    }
+
+    // ==========================================================
+    // BI-12 : ACCÈS À UNE ROUTE PROTÉGÉE AVEC JWT INVALIDE
+    // ==========================================================
+
+    @Test
+    public void getAllUsersWithInvalidJwtReturnsUnauthorized() throws Exception {
+
+        // GIVEN : un jeton JWT volontairement invalide.
+        //
+        // Cette chaîne possède trois parties séparées par
+        // des points, mais ne contient pas de signature valide.
+        //
+        // JwtAuthenticationFilter doit tenter de traiter
+        // le jeton et refuser l'authentification.
+
+        String invalidToken = "invalid.header.signature";
+
+        // WHEN : appel de GET /api/users avec le mauvais JWT.
+        //
+        // L'en-tête Authorization utilise bien le préfixe
+        // Bearer attendu par notre filtre de sécurité.
+
+        // THEN : le filtre doit répondre HTTP 401.
+        //
+        // Aucun utilisateur ne doit être authentifié
+        // à partir de ce jeton invalide.
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/users")
+                        .header("Authorization", "Bearer " + invalidToken)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());
     }
 }
